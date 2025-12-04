@@ -1,0 +1,138 @@
+// --- Game Logic Class (Core of GameView) ---
+
+class GameLogic {
+    constructor(levelIndex) {
+        this.level = LevelData[levelIndex];
+        this.dots = [];
+        this.lines = [];
+        this.currentLine = null;
+        this.dotPairs = [];
+    }
+
+    resetLevel() {
+        this.dots = [...this.level.dots];
+        this.lines = [];
+        this.currentLine = null;
+        this.dotPairs = this.calculateDotPairs(this.dots);
+    }
+
+    calculateDotPairs(dots) {
+        const colorToDots = {};
+        for (const dot of dots) {
+            colorToDots[dot.color] = colorToDots[dot.color] || [];
+            colorToDots[dot.color].push(dot.position);
+        }
+
+        const pairs = [];
+        for (const color in colorToDots) {
+            if (colorToDots[color].length === 2) {
+                pairs.push(colorToDots[color]);
+            }
+        }
+        return pairs;
+    }
+
+    // --- Drag Handling ---
+
+    handleDragStart(location) {
+        const dot = this.dots.find(d => this.distance(location, d.position) < dotRadius * 2);
+        if (dot) {
+            // Check if this color already has a completed line
+            if (!this.lines.some(l => l.color === dot.color)) {
+                this.currentLine = new Line([dot.position, location], dot.color);
+            }
+        }
+    }
+
+    handleDragMove(location) {
+        if (this.currentLine) {
+            this.currentLine.points[this.currentLine.points.length - 1] = location;
+        }
+    }
+
+    handleDragEnd(location) {
+        let isComplete = false;
+        if (this.currentLine) {
+            const startPoint = this.currentLine.points[0];
+            const endDot = this.dots.find(d => this.distance(location, d.position) < dotRadius * 2);
+
+            if (endDot && endDot.color === this.currentLine.color && !endDot.position.equals(startPoint)) {
+                // End dot is of the same color and is the corresponding pair
+                if (this.isPairDot(startPoint, endDot.position)) {
+                    this.currentLine.points[this.currentLine.points.length - 1] = endDot.position;
+
+                    // Add line if valid (no crossing)
+                    if (this.isValidPath(this.currentLine)) {
+                        this.lines.push(this.currentLine);
+                        isComplete = this.isLevelComplete();
+                    }
+                }
+            }
+        }
+
+        this.currentLine = null;
+        return isComplete; // Return completion status to update the main app state
+    }
+
+    // --- Geometry and Validation ---
+
+    distance(p1, p2) {
+        return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    }
+
+    isPairDot(start, end) {
+        return this.dotPairs.some(pair =>
+            (pair[0].equals(start) && pair[1].equals(end)) ||
+            (pair[0].equals(end) && pair[1].equals(start))
+        );
+    }
+
+    isLevelComplete() {
+        if (this.lines.length !== this.dotPairs.length) {
+            return false;
+        }
+        // Also ensure all dots are part of a line (implicitly done by checking line count and pairs)
+        return true;
+    }
+
+    // The line segment intersection logic is the most complex part
+    isValidPath(newLine) {
+        for (const existingLine of this.lines) {
+            if (existingLine.color !== newLine.color) {
+                for (let i = 0; i < newLine.points.length - 1; i++) {
+                    const p1 = newLine.points[i];
+                    const p2 = newLine.points[i + 1];
+                    for (let j = 0; j < existingLine.points.length - 1; j++) {
+                        const p3 = existingLine.points[j];
+                        const p4 = existingLine.points[j + 1];
+                        if (this.segmentsIntersect(p1, p2, p3, p4)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    // Simplified segment intersection logic (only checking non-endpoint crossing)
+    segmentsIntersect(p1, p2, p3, p4) {
+        // Exclude endpoints from intersection check to allow connections
+        if (p1.equals(p3) || p1.equals(p4) || p2.equals(p3) || p2.equals(p4)) {
+            return false;
+        }
+
+        const d1 = this.direction(p3, p4, p1);
+        const d2 = this.direction(p3, p4, p2);
+        const d3 = this.direction(p1, p2, p3);
+        const d4 = this.direction(p1, p2, p4);
+
+        return (d1 > 0 && d2 < 0 || d1 < 0 && d2 > 0) &&
+               (d3 > 0 && d4 < 0 || d3 < 0 && d4 > 0);
+    }
+
+    direction(p1, p2, p3) {
+        // Cross product logic to determine direction (positive, negative, or zero for collinear)
+        return (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y);
+    }
+}
