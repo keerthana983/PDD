@@ -1,0 +1,1385 @@
+import SwiftUI
+
+// MARK: - Dot and Line Models
+struct Dot: Identifiable {
+    let id = UUID()
+    let position: CGPoint
+    let color: Color
+}
+
+struct Line {
+    var points: [CGPoint]
+    let color: Color
+}
+
+struct Level {
+    let dots: [Dot]
+    let name: String
+}
+
+// MARK: - ContentView (Main Navigation)
+struct ContentView: View {
+    @State private var showGame = false
+    @State private var showSecondSplash = false
+    @State private var showLevelSelection = false
+    @State private var selectedLevel: Int?
+    @State private var completedLevels: Set<Int> = [] // Changed to empty set for 0/50 levels completed
+
+    var body: some View {
+        if showGame, let level = selectedLevel {
+            GameView(level: level, showGame: $showGame, completedLevels: $completedLevels)
+        } else if showLevelSelection {
+            LevelSelectionView(selectedLevel: $selectedLevel, showGame: $showGame, showLevelSelection: $showLevelSelection, completedLevels: completedLevels)
+        } else if showSecondSplash {
+            SecondSplashView(showLevelSelection: $showLevelSelection)
+        } else {
+            FirstSplashView(showSecondSplash: $showSecondSplash)
+        }
+    }
+}
+
+// MARK: - First Splash Screen View (Logo and Tap to Start)
+struct FirstSplashView: View {
+    @Binding var showSecondSplash: Bool
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.9, green: 0.95, blue: 1.0) // Light blue background
+                .edgesIgnoringSafeArea(.all)
+
+            // Background circles for decorative effect
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 200, height: 200)
+                    .position(x: 100, y: 100)
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 150, height: 150)
+                    .position(x: 300, y: 600)
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 180, height: 180)
+                    .position(x: 50, y: 500)
+            }
+
+            VStack(spacing: 30) {
+                Spacer()
+
+                // Logo: "P" inside a circle with a square border
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 100, height: 100)
+                        .shadow(radius: 10)
+                    Text("P")
+                        .font(.system(size: 50, weight: .bold))
+                        .foregroundColor(.blue)
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.blue, lineWidth: 2)
+                        .frame(width: 120, height: 120)
+                )
+
+                // Title
+                Text("Pairflow")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(.black)
+
+                // Start Button
+                Button(action: {
+                    withAnimation {
+                        showSecondSplash = true
+                    }
+                }) {
+                    Text("Tap to Start")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 200, height: 50)
+                        .background(Color.blue)
+                        .cornerRadius(25)
+                        .shadow(radius: 5)
+                }
+
+                Spacer()
+            }
+        }
+    }
+}
+
+// MARK: - Second Splash Screen View (Play and How to Play)
+struct SecondSplashView: View {
+    @Binding var showLevelSelection: Bool
+    @State private var showHowToPlay = false
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.9, green: 0.95, blue: 1.0) // Light blue background
+                .edgesIgnoringSafeArea(.all)
+
+            VStack(spacing: 20) {
+                Spacer()
+
+                // Title
+                Text("Pairflow")
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundColor(.black)
+
+                // Tagline
+                Text("Match & Flow Your Way to Victory")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.gray)
+
+                Spacer()
+
+                // Play Button
+                Button(action: {
+                    withAnimation {
+                        showLevelSelection = true
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.white)
+                        Text("Play")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 200, height: 50)
+                    .background(Color.blue)
+                    .cornerRadius(25)
+                }
+
+                // How to Play Button
+                Button(action: {
+                    showHowToPlay = true
+                }) {
+                    HStack {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.blue)
+                        Text("How to Play")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.blue)
+                    }
+                    .frame(width: 200, height: 50)
+                    .background(Color.white)
+                    .cornerRadius(25)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 25)
+                            .stroke(Color.blue, lineWidth: 2)
+                    )
+                }
+
+                Spacer()
+
+                // Version Number
+                Text("Version 1.0")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+            }
+        }
+        .sheet(isPresented: $showHowToPlay) {
+            HowToPlayView()
+        }
+    }
+}
+
+// MARK: - How to Play View
+struct HowToPlayView: View {
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.white
+                .edgesIgnoringSafeArea(.all)
+
+            ScrollView {
+                VStack(spacing: 30) {
+                    // Header
+                    HStack {
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 24))
+                                .foregroundColor(.blue)
+                                .padding(.leading, 10)
+                        }
+                        Spacer()
+                        Text("How to Play")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.black)
+                        Spacer()
+                    }
+                    .padding(.top, 10)
+
+                    // Game Objective Section
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Game Objective")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.black)
+
+                        Text("Connect matching colored dots to complete the puzzle. Link paths between dots of the same color to solve each level.")
+                            .font(.system(size: 16))
+                            .foregroundColor(.black)
+
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(Color.gray.opacity(0.1))
+                                .frame(width: 200, height: 100)
+
+                            Path { path in
+                                path.move(to: CGPoint(x: 50, y: 50))
+                                path.addLine(to: CGPoint(x: 150, y: 50))
+                            }
+                            .stroke(Color.blue, lineWidth: 4)
+
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 20, height: 20)
+                                .position(x: 50, y: 50)
+
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 20, height: 20)
+                                .position(x: 150, y: 50)
+
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 20, height: 20)
+                                .position(x: 100, y: 80)
+                        }
+                        .frame(width: 200, height: 100)
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    // Connection Rules Section
+                    VStack(alignment: .leading, spacing: 15) {
+                        Text("Connection Rules")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.black)
+
+                        // Rule 1: Correct connection
+                        HStack(alignment: .center, spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.system(size: 24))
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Draw a straight line between matching colored dots")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.black)
+
+                                ZStack {
+                                    Path { path in
+                                        path.move(to: CGPoint(x: 10, y: 20))
+                                        path.addLine(to: CGPoint(x: 110, y: 20))
+                                    }
+                                    .stroke(Color.blue, lineWidth: 4)
+
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 10, y: 20)
+
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 110, y: 20)
+                                }
+                                .frame(width: 120, height: 40)
+                            }
+                        }
+
+                        // Rule 2: Incorrect connection
+                        HStack(alignment: .center, spacing: 10) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 24))
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Lines must not cross or overlap with other connections")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.black)
+
+                                ZStack {
+                                    Path { path in
+                                        path.move(to: CGPoint(x: 10, y: 10))
+                                        path.addLine(to: CGPoint(x: 110, y: 30))
+                                    }
+                                    .stroke(Color.red, lineWidth: 4)
+
+                                    Path { path in
+                                        path.move(to: CGPoint(x: 10, y: 30))
+                                        path.addLine(to: CGPoint(x: 110, y: 10))
+                                    }
+                                    .stroke(Color.blue, lineWidth: 4)
+
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 10, y: 10)
+
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 110, y: 30)
+
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 10, y: 30)
+
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 20, height: 20)
+                                        .position(x: 110, y: 10)
+                                }
+                                .frame(width: 120, height: 40)
+                            }
+                        }
+                    }
+
+                    // How to Connect Section
+                    VStack(alignment: .leading, spacing: 15) {
+                        Text("How to Connect")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.black)
+
+                        // Step 1
+                        HStack(alignment: .center, spacing: 10) {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Text("1")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 16, weight: .bold))
+                                )
+                            Text("Find matching colored dots")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+
+                        // Step 2
+                        HStack(alignment: .center, spacing: 10) {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Text("2")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 16, weight: .bold))
+                                )
+                            Text("Drag to create a path")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+
+                        // Step 3
+                        HStack(alignment: .center, spacing: 10) {
+                            Circle()
+                                .fill(Color.blue)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    Text("3")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 16, weight: .bold))
+                                )
+                            Text("Complete all connections")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+                    }
+
+                    // Helpful Tips Section
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Helpful Tips")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.black)
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.grid.2x2.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+                            Text("Plan your moves ahead")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.grid.2x2.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+                            Text("Start with obvious matches")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "square.grid.2x2.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 16))
+                            Text("Leave space for other connections")
+                                .font(.system(size: 16))
+                                .foregroundColor(.black)
+                        }
+                    }
+
+                    // Start Playing Button
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("Start Playing")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 10)
+            }
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Level Selection View
+struct LevelSelectionView: View {
+    @Binding var selectedLevel: Int?
+    @Binding var showGame: Bool
+    @Binding var showLevelSelection: Bool
+    let completedLevels: Set<Int>
+    private let totalLevels = 50
+    private let levelsPerRow = 4
+
+    var body: some View {
+        ZStack {
+            Color(red: 0.9, green: 0.95, blue: 1.0) // Light blue background
+                .edgesIgnoringSafeArea(.all)
+
+            VStack(spacing: 20) {
+                // Header
+                HStack {
+                    Button(action: {
+                        withAnimation {
+                            showLevelSelection = false
+                            showGame = false
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 24))
+                            .foregroundColor(.blue)
+                            .padding(.leading, 10)
+                    }
+                    Spacer()
+                    Text("LEVELS")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.black)
+                    Spacer()
+                }
+                .padding(.top, 10)
+
+                Text("\(completedLevels.count)/\(totalLevels) Levels Completed")
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+
+                // Scrollable grid of levels
+                ScrollView {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 15), count: levelsPerRow), spacing: 15) {
+                        ForEach(1...totalLevels, id: \.self) { level in
+                            Button(action: {
+                                selectedLevel = level
+                                withAnimation {
+                                    showGame = true
+                                }
+                            }) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.white)
+                                        .frame(width: 60, height: 60)
+                                        .shadow(radius: 5)
+
+                                    Text("\(level)")
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(completedLevels.contains(level) ? .yellow : .blue)
+                                }
+                            }
+                            .disabled(level > completedLevels.count + 1) // Lock levels beyond the next uncompleted level
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                }
+
+                // Footer message
+                Text("Complete more levels to unlock new challenges!")
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+
+                Spacer()
+            }
+        }
+        .navigationBarHidden(true)
+    }
+}
+
+// MARK: - Game View (Actual Game Logic)
+struct GameView: View {
+    let level: Int
+    @Binding var showGame: Bool
+    @Binding var completedLevels: Set<Int>
+
+    // Define colors for the dots
+    private let colors: [Color] = [.red, .blue, .green, .yellow, .purple, .pink, .orange, .cyan]
+
+    // Define 50 fixed levels with increased spacing between dots
+    private let levels: [Level] = [
+        // Level 1: 1 pair
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink)
+        ], name: "Level 1"),
+        // Level 2: 1 pair, slightly different
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue)
+        ], name: "Level 2"),
+        // Level 3: 2 pairs, easy
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 50, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 250), color: .yellow)
+        ], name: "Level 3"),
+        // Level 4: 2 pairs, slightly harder
+        Level(dots: [
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink)
+        ], name: "Level 4"),
+        // Level 5: 3 pairs, moderate
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red)
+        ], name: "Level 5"),
+        // Level 6: 3 pairs, different layout
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 150, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 250), color: .yellow)
+        ], name: "Level 6"),
+        // Level 7: 4 pairs, moderate
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 150), color: .cyan)
+        ], name: "Level 7"),
+        // Level 8: 4 pairs, harder layout
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 150), color: .green),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 250), color: .yellow)
+        ], name: "Level 8"),
+        // Level 9: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 250), color: .cyan)
+        ], name: "Level 9"),
+        // Level 10: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 150), color: .green),
+            Dot(position: CGPoint(x: 150, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple)
+        ], name: "Level 10"),
+        // Level 11: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 150), color: .blue)
+        ], name: "Level 11"),
+        // Level 12: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink)
+        ], name: "Level 12"),
+        // Level 13: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 150), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green)
+        ], name: "Level 13"),
+        // Level 14: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 150), color: .orange)
+        ], name: "Level 14"),
+        // Level 15: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .red),
+            Dot(position: CGPoint(x: 250, y: 250), color: .red),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 50, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 150), color: .yellow)
+        ], name: "Level 15"),
+        // Level 16: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 250), color: .cyan)
+        ], name: "Level 16"),
+        // Level 17: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 150), color: .green),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple)
+        ], name: "Level 17"),
+        // Level 18: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 150), color: .red)
+        ], name: "Level 18"),
+        // Level 19: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink)
+        ], name: "Level 19"),
+        // Level 20: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 250, y: 250), color: .red),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 150), color: .blue)
+        ], name: "Level 20"),
+        // Level 21: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 100, y: 100), color: .cyan),
+            Dot(position: CGPoint(x: 200, y: 200), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 200), color: .red),
+            Dot(position: CGPoint(x: 200, y: 100), color: .red)
+        ], name: "Level 21"),
+        // Level 22: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .green),
+            Dot(position: CGPoint(x: 50, y: 150), color: .green),
+            Dot(position: CGPoint(x: 150, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 250), color: .purple)
+        ], name: "Level 22"),
+        // Level 23: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 150), color: .blue)
+        ], name: "Level 23"),
+        // Level 24: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink)
+        ], name: "Level 24"),
+        // Level 25: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 150), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 100, y: 100), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 100, y: 200), color: .purple),
+            Dot(position: CGPoint(x: 200, y: 100), color: .purple)
+        ], name: "Level 25"),
+        // Level 26: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .red),
+            Dot(position: CGPoint(x: 250, y: 250), color: .red)
+        ], name: "Level 26"),
+        // Level 27: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .green),
+            Dot(position: CGPoint(x: 50, y: 250), color: .green),
+            Dot(position: CGPoint(x: 150, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 100, y: 100), color: .pink),
+            Dot(position: CGPoint(x: 200, y: 200), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 200), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 100), color: .orange)
+        ], name: "Level 27"),
+        // Level 28: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .red),
+            Dot(position: CGPoint(x: 150, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 150), color: .green)
+        ], name: "Level 28"),
+        // Level 29: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 250), color: .cyan)
+        ], name: "Level 29"),
+        // Level 30: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 50, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 150), color: .yellow)
+        ], name: "Level 30"),
+        // Level 31: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 100, y: 100), color: .blue),
+            Dot(position: CGPoint(x: 200, y: 200), color: .blue),
+            Dot(position: CGPoint(x: 100, y: 200), color: .green),
+            Dot(position: CGPoint(x: 200, y: 100), color: .green)
+        ], name: "Level 31"),
+        // Level 32: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 100), color: .red),
+            Dot(position: CGPoint(x: 200, y: 200), color: .red),
+            Dot(position: CGPoint(x: 100, y: 200), color: .blue),
+            Dot(position: CGPoint(x: 200, y: 100), color: .blue)
+        ], name: "Level 32"),
+        // Level 33: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 100), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 200), color: .orange),
+            Dot(position: CGPoint(x: 100, y: 200), color: .cyan),
+            Dot(position: CGPoint(x: 200, y: 100), color: .cyan)
+        ], name: "Level 33"),
+        // Level 34: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 50, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 150), color: .yellow)
+        ], name: "Level 34"),
+        // Level 35: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 100, y: 100), color: .blue),
+            Dot(position: CGPoint(x: 200, y: 200), color: .blue),
+            Dot(position: CGPoint(x: 100, y: 200), color: .green),
+            Dot(position: CGPoint(x: 200, y: 100), color: .green)
+        ], name: "Level 35"),
+        // Level 36: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 100, y: 100), color: .cyan),
+            Dot(position: CGPoint(x: 200, y: 200), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 200), color: .red),
+            Dot(position: CGPoint(x: 200, y: 100), color: .red)
+        ], name: "Level 36"),
+        // Level 37: 5 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 100), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 200), color: .orange)
+        ], name: "Level 37"),
+        // Level 38: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .red),
+            Dot(position: CGPoint(x: 150, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 150), color: .green)
+        ], name: "Level 38"),
+        // Level 39: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 100), color: .red),
+            Dot(position: CGPoint(x: 200, y: 200), color: .red),
+            Dot(position: CGPoint(x: 100, y: 200), color: .blue),
+            Dot(position: CGPoint(x: 200, y: 100), color: .blue)
+        ], name: "Level 39"),
+        // Level 40: 4 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 250), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 150), color: .pink)
+        ], name: "Level 40"),
+        // Level 41: 7 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 150), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 100, y: 100), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 100, y: 200), color: .purple),
+            Dot(position: CGPoint(x: 200, y: 100), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 150), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 150), color: .orange)
+        ], name: "Level 41"),
+        // Level 42: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .red),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 150, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 250), color: .green),
+            Dot(position: CGPoint(x: 100, y: 100), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 100, y: 200), color: .purple),
+            Dot(position: CGPoint(x: 200, y: 100), color: .purple)
+        ], name: "Level 42"),
+        // Level 43: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 50), color: .red),
+            Dot(position: CGPoint(x: 150, y: 250), color: .red),
+            Dot(position: CGPoint(x: 50, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 150), color: .blue),
+            Dot(position: CGPoint(x: 100, y: 100), color: .green),
+            Dot(position: CGPoint(x: 200, y: 200), color: .green),
+            Dot(position: CGPoint(x: 100, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 100), color: .yellow)
+        ], name: "Level 43"),
+        // Level 44: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 150, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 100), color: .blue),
+            Dot(position: CGPoint(x: 200, y: 200), color: .blue),
+            Dot(position: CGPoint(x: 100, y: 200), color: .green),
+            Dot(position: CGPoint(x: 200, y: 100), color: .green)
+        ], name: "Level 44"),
+        // Level 45: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 100, y: 100), color: .cyan),
+            Dot(position: CGPoint(x: 200, y: 200), color: .cyan),
+            Dot(position: CGPoint(x: 100, y: 200), color: .red),
+            Dot(position: CGPoint(x: 200, y: 100), color: .red)
+        ], name: "Level 45"),
+        // Level 46: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .green),
+            Dot(position: CGPoint(x: 150, y: 250), color: .green),
+            Dot(position: CGPoint(x: 250, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 50), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 50, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 250), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 100), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 200), color: .orange),
+            Dot(position: CGPoint(x: 100, y: 200), color: .cyan),
+            Dot(position: CGPoint(x: 200, y: 100), color: .cyan)
+        ], name: "Level 46"),
+        // Level 47: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 50), color: .green),
+            Dot(position: CGPoint(x: 50, y: 250), color: .green),
+            Dot(position: CGPoint(x: 150, y: 50), color: .yellow),
+            Dot(position: CGPoint(x: 150, y: 250), color: .yellow),
+            Dot(position: CGPoint(x: 50, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 250, y: 150), color: .purple),
+            Dot(position: CGPoint(x: 100, y: 100), color: .pink),
+            Dot(position: CGPoint(x: 200, y: 200), color: .pink),
+            Dot(position: CGPoint(x: 100, y: 200), color: .orange),
+            Dot(position: CGPoint(x: 200, y: 100), color: .orange)
+        ], name: "Level 47"),
+        // Level 48: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 150, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 50), color: .red),
+            Dot(position: CGPoint(x: 50, y: 250), color: .red),
+            Dot(position: CGPoint(x: 150, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 250, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 50, y: 150), color: .green),
+            Dot(position: CGPoint(x: 250, y: 150), color: .green),
+            Dot(position: CGPoint(x: 100, y: 100), color: .purple),
+            Dot(position: CGPoint(x: 200, y: 200), color: .purple),
+            Dot(position: CGPoint(x: 100, y: 200), color: .pink),
+            Dot(position: CGPoint(x: 200, y: 100), color: .pink)
+        ], name: "Level 48"),
+        // Level 49: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 250, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 150), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 250), color: .red),
+            Dot(position: CGPoint(x: 250, y: 250), color: .red),
+            Dot(position: CGPoint(x: 150, y: 50), color: .blue),
+            Dot(position: CGPoint(x: 150, y: 250), color: .blue),
+            Dot(position: CGPoint(x: 100, y: 100), color: .green),
+            Dot(position: CGPoint(x: 200, y: 200), color: .green),
+            Dot(position: CGPoint(x: 100, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 100), color: .yellow)
+        ], name: "Level 49"),
+        // Level 50: 6 pairs
+        Level(dots: [
+            Dot(position: CGPoint(x: 50, y: 50), color: .pink),
+            Dot(position: CGPoint(x: 150, y: 150), color: .pink),
+            Dot(position: CGPoint(x: 250, y: 50), color: .orange),
+            Dot(position: CGPoint(x: 50, y: 250), color: .orange),
+            Dot(position: CGPoint(x: 150, y: 50), color: .cyan),
+            Dot(position: CGPoint(x: 250, y: 250), color: .cyan),
+            Dot(position: CGPoint(x: 50, y: 150), color: .red),
+            Dot(position: CGPoint(x: 250, y: 150), color: .red),
+            Dot(position: CGPoint(x: 100, y: 100), color: .green),
+            Dot(position: CGPoint(x: 200, y: 200), color: .green),
+            Dot(position: CGPoint(x: 100, y: 200), color: .yellow),
+            Dot(position: CGPoint(x: 200, y: 100), color: .yellow)
+        ], name: "Level 50")
+    ]
+
+    @State private var dots: [Dot] = []
+    @State private var lines: [Line] = []
+    @State private var currentLine: Line?
+    @State private var dotPairs: [[CGPoint]] = []
+    private let dotRadius: CGFloat = 10
+
+    var body: some View {
+        ZStack {
+            Color.white // White background
+                .edgesIgnoringSafeArea(.all)
+
+            VStack {
+                // Header
+                HStack {
+                    Button(action: {
+                        withAnimation {
+                            showGame = false
+                        }
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 24))
+                            .foregroundColor(.blue)
+                            .padding(.leading, 10)
+                    }
+                    Spacer()
+                    Text("Level \(level)")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.black)
+                    Spacer()
+                }
+                .padding(.top, 10)
+
+                Spacer()
+
+                ZStack {
+                    // Removed the blue-bordered square, just use a white background
+                    Rectangle()
+                        .fill(Color.white)
+                        .frame(width: 300, height: 300)
+
+                    // Draw the completed lines
+                    ForEach(lines.indices, id: \.self) { index in
+                        Path { path in
+                            let points = lines[index].points
+                            if !points.isEmpty {
+                                path.move(to: points[0])
+                                for point in points.dropFirst() {
+                                    path.addLine(to: point)
+                                }
+                            }
+                        }
+                        .stroke(lines[index].color, lineWidth: 6)
+                    }
+
+                    // Draw the current line being drawn
+                    if let line = currentLine, !line.points.isEmpty {
+                        Path { path in
+                            path.move(to: line.points[0])
+                            for point in line.points.dropFirst() {
+                                path.addLine(to: point)
+                            }
+                        }
+                        .stroke(line.color, lineWidth: 6)
+                    }
+
+                    // Draw the dots
+                    ForEach(dots) { dot in
+                        Circle()
+                            .fill(dot.color)
+                            .frame(width: dotRadius * 2, height: dotRadius * 2)
+                            .position(dot.position)
+                    }
+                }
+                .frame(width: 300, height: 300)
+                .background(Color.white) // Ensure ZStack background is white outside the square
+                .gesture(
+                    DragGesture(minimumDistance: 1)
+                        .onChanged { value in
+                            handleDrag(at: value.location)
+                        }
+                        .onEnded { value in
+                            handleDragEnd(at: value.location)
+                        }
+                )
+
+                // Reset button
+                Button(action: {
+                    resetLevel()
+                }) {
+                    Image(systemName: "arrow.clockwise")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .padding()
+                        .background(Circle().fill(Color.white).shadow(radius: 2))
+                }
+                .padding()
+
+                Spacer()
+            }
+        }
+        .navigationBarHidden(true)
+        .onAppear {
+            resetLevel()
+        }
+    }
+
+    // MARK: - Game Logic Functions
+
+    private func resetLevel() {
+        dots = levels[level - 1].dots // Level is 1-based, array is 0-based
+        lines = []
+        currentLine = nil
+        dotPairs = []
+        // Create pairs based on dot colors
+        var colorToDots: [Color: [CGPoint]] = [:]
+        for dot in dots {
+            colorToDots[dot.color, default: []].append(dot.position)
+        }
+        for (_, positions) in colorToDots {
+            if positions.count == 2 {
+                dotPairs.append(positions)
+            }
+        }
+    }
+
+    private func handleDrag(at location: CGPoint) {
+        if currentLine == nil {
+            // Start drawing from a dot
+            if let dot = dots.first(where: { distance(from: location, to: $0.position) < dotRadius * 2 }) {
+                if !lines.contains(where: { $0.color == dot.color }) {
+                    currentLine = Line(points: [dot.position], color: dot.color)
+                }
+            }
+        } else if var line = currentLine {
+            // Add points to the current line
+            if line.points.last != nil {
+                line.points.append(location)
+                currentLine = line
+            }
+        }
+    }
+
+    private func handleDragEnd(at location: CGPoint) {
+        if var line = currentLine, !line.points.isEmpty {
+            if let endDot = dots.first(where: { distance(from: location, to: $0.position) < dotRadius * 2 }),
+               endDot.color == line.color,
+               endDot.position != line.points[0],
+               isPairDot(start: line.points[0], end: endDot.position) {
+                line.points.append(endDot.position)
+                if isValidPath(line: line) {
+                    lines.append(line)
+                    if isLevelComplete() {
+                        // Mark the level as completed
+                        completedLevels.insert(level)
+                        // Return to level selection upon completion
+                        withAnimation {
+                            showGame = false
+                        }
+                    }
+                }
+            }
+        }
+        currentLine = nil
+    }
+
+    private func distance(from point1: CGPoint, to point2: CGPoint) -> CGFloat {
+        hypot(point1.x - point2.x, point1.y - point2.y)
+    }
+
+    private func isValidPath(line: Line) -> Bool {
+        for existingLine in lines {
+            if existingLine.color != line.color {
+                for i in 0..<(line.points.count - 1) {
+                    let p1 = line.points[i]
+                    let p2 = line.points[i + 1]
+                    for j in 0..<(existingLine.points.count - 1) {
+                        let p3 = existingLine.points[j]
+                        let p4 = existingLine.points[j + 1]
+                        if segmentsIntersect(p1, p2, p3, p4) {
+                            return false
+                        }
+                    }
+                }
+            }
+        }
+        return true
+    }
+
+    private func segmentsIntersect(_ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint, _ p4: CGPoint) -> Bool {
+        if p1 == p3 || p1 == p4 || p2 == p3 || p2 == p4 { return false }
+        let d1 = direction(p3, p4, p1)
+        let d2 = direction(p3, p4, p2)
+        let d3 = direction(p1, p2, p3)
+        let d4 = direction(p1, p2, p4)
+        return (d1 > 0 && d2 < 0 || d1 < 0 && d2 > 0) && (d3 > 0 && d4 < 0 || d3 < 0 && d4 > 0)
+    }
+
+    private func direction(_ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint) -> CGFloat {
+        (p3.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (p3.y - p1.y)
+    }
+
+    private func isPairDot(start: CGPoint, end: CGPoint) -> Bool {
+        for pair in dotPairs {
+            if (pair[0] == start && pair[1] == end) || (pair[0] == end && pair[1] == start) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private func isLevelComplete() -> Bool {
+        let connectedDots = Set(lines.flatMap { [$0.points.first, $0.points.last] }.compactMap { $0 })
+        if connectedDots.count != dots.count { return false }
+
+        for pair in dotPairs {
+            guard lines.first(where: { $0.points.first == pair[0] && $0.points.last == pair[1] || $0.points.first == pair[1] && $0.points.last == pair[0] }) != nil else {
+                return false
+            }
+        }
+        return true
+    }
+}
+
+// MARK: - Preview
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
